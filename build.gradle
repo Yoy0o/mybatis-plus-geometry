@@ -37,7 +37,7 @@ dependencies {
     compileOnly 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
     
     // Jackson for JSON serialization - optional
-    compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.15.3'
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.21.0'
     
     // Apache Commons Codec for hex encoding
     implementation 'commons-codec:commons-codec:1.16.0'
@@ -54,7 +54,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.2'
     testImplementation 'net.jqwik:jqwik:1.8.2'
     testImplementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.15.3'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.21.0'
 }
 
 test {
