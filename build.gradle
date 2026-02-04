@@ -43,15 +43,15 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.16.0'
     
     // Spring Boot (optional, for auto-configuration)
-    compileOnly 'org.springframework.boot:spring-boot-autoconfigure:3.2.2'
-    compileOnly 'org.springframework.boot:spring-boot-configuration-processor:3.2.2'
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor:3.2.2'
+    compileOnly 'org.springframework.boot:spring-boot-autoconfigure:4.0.2'
+    compileOnly 'org.springframework.boot:spring-boot-configuration-processor:4.0.2'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor:4.0.2'
     
     // Logging - API only
     implementation 'org.slf4j:slf4j-api:2.0.9'
     
     // Test dependencies
-    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.2'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test:4.0.2'
     testImplementation 'net.jqwik:jqwik:1.8.2'
     testImplementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.15.3'
