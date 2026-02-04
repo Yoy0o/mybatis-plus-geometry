@@ -48,7 +48,7 @@ dependencies {
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor:3.2.2'
     
     // Logging - API only
-    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'org.slf4j:slf4j-api:2.0.17'
     
     // Test dependencies
     testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.2'
