@@ -47,6 +47,21 @@ jobs:
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        timeout-minutes: 30
+        continue-on-error: false
+      
+      - name: Retry Publish on Failure
+        if: failure()
+        run: |
+          echo "First attempt failed, retrying after 30 seconds..."
+          sleep 30
+          ./gradlew publishMavenJavaPublicationToOSSRHRepository --no-daemon
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        timeout-minutes: 30
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1

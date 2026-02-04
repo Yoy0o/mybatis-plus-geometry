@@ -119,8 +119,10 @@ publishing {
     repositories {
         maven {
             name = 'OSSRH'
-            def releasesRepoUrl = 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
-            def snapshotsRepoUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+            // Updated to use the new OSSRH Staging API endpoint
+            // See: https://mvysny.github.io/ossrh-deprecated/
+            def releasesRepoUrl = 'https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/'
+            def snapshotsRepoUrl = 'https://ossrh-staging-api.central.sonatype.com/content/repositories/snapshots/'
             url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
             
             credentials {
@@ -128,6 +130,15 @@ publishing {
                 password = findProperty('ossrhPassword') ?: System.getenv('OSSRH_PASSWORD')
             }
         }
+    }
+}
+
+// Configure HTTP timeouts for publishing
+tasks.withType(PublishToMavenRepository) {
+    doFirst {
+        // Increase timeout for slow networks
+        System.setProperty('org.gradle.internal.http.connectionTimeout', '120000')
+        System.setProperty('org.gradle.internal.http.socketTimeout', '120000')
     }
 }
 
