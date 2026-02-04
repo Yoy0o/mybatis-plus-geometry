@@ -40,7 +40,7 @@ dependencies {
     compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.15.3'
     
     // Apache Commons Codec for hex encoding
-    implementation 'commons-codec:commons-codec:1.16.0'
+    implementation 'commons-codec:commons-codec:1.21.0'
     
     // Spring Boot (optional, for auto-configuration)
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure:3.2.2'
