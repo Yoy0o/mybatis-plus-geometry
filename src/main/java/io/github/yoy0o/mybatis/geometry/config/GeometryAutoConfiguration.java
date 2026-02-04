@@ -1,0 +1,120 @@
+package io.github.yoy0o.mybatis.geometry.config;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import io.github.yoy0o.mybatis.geometry.handler.LineStringTypeHandler;
+import io.github.yoy0o.mybatis.geometry.handler.PointTypeHandler;
+import io.github.yoy0o.mybatis.geometry.handler.PolygonTypeHandler;
+import io.github.yoy0o.mybatis.geometry.interceptor.GeometryFieldInterceptor;
+import io.github.yoy0o.mybatis.geometry.strategy.GeometryHandlerStrategy;
+import io.github.yoy0o.mybatis.geometry.strategy.GeometryStrategyFactory;
+import io.github.yoy0o.mybatis.geometry.util.GeometryFactoryProvider;
+import org.locationtech.jts.geom.Geometry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+
+import javax.sql.DataSource;
+
+/**
+ * Spring Boot auto-configuration for MyBatis Plus Geometry Extension.
+ * 
+ * <p>This configuration is automatically applied when:</p>
+ * <ul>
+ *   <li>MyBatis Plus BaseMapper is on the classpath</li>
+ *   <li>JTS Geometry is on the classpath</li>
+ * </ul>
+ * 
+ * <p>Beans registered:</p>
+ * <ul>
+ *   <li>GeometryHandlerStrategy - database-specific strategy</li>
+ *   <li>PointTypeHandler - TypeHandler for Point</li>
+ *   <li>PolygonTypeHandler - TypeHandler for Polygon</li>
+ *   <li>LineStringTypeHandler - TypeHandler for LineString</li>
+ *   <li>GeometryFieldInterceptor - SQL interceptor (conditional)</li>
+ * </ul>
+ * 
+ * <p>Compatible with Spring Boot 2.7+ and Spring Boot 3.x</p>
+ */
+@AutoConfiguration
+@ConditionalOnClass({BaseMapper.class, Geometry.class})
+@EnableConfigurationProperties(GeometryProperties.class)
+public class GeometryAutoConfiguration {
+    
+    private static final Logger log = LoggerFactory.getLogger(GeometryAutoConfiguration.class);
+    
+    /**
+     * Create GeometryHandlerStrategy bean.
+     * Auto-detects database type if not configured.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public GeometryHandlerStrategy geometryHandlerStrategy(
+            DataSource dataSource, 
+            GeometryProperties properties) {
+        
+        if (properties.getDatabaseType() != null) {
+            log.info("Using configured database type: {}", properties.getDatabaseType());
+            return GeometryStrategyFactory.getStrategy(properties.getDatabaseType());
+        }
+        
+        log.info("Auto-detecting database type from DataSource");
+        return GeometryStrategyFactory.detectStrategy(dataSource);
+    }
+    
+    /**
+     * Create GeometryFieldInterceptor bean.
+     * Only created when interceptor is enabled (default: true).
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(
+        prefix = "mybatis.geometry", 
+        name = "interceptor-enabled", 
+        havingValue = "true", 
+        matchIfMissing = true
+    )
+    public GeometryFieldInterceptor geometryFieldInterceptor(GeometryHandlerStrategy strategy) {
+        log.info("Registering GeometryFieldInterceptor");
+        return new GeometryFieldInterceptor(strategy);
+    }
+    
+    /**
+     * Create PointTypeHandler bean.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public PointTypeHandler pointTypeHandler(GeometryProperties properties) {
+        configureGeometryFactory(properties);
+        return new PointTypeHandler(properties.getDefaultSrid());
+    }
+    
+    /**
+     * Create PolygonTypeHandler bean.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public PolygonTypeHandler polygonTypeHandler(GeometryProperties properties) {
+        return new PolygonTypeHandler(properties.getDefaultSrid());
+    }
+    
+    /**
+     * Create LineStringTypeHandler bean.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public LineStringTypeHandler lineStringTypeHandler(GeometryProperties properties) {
+        return new LineStringTypeHandler(properties.getDefaultSrid());
+    }
+    
+    private void configureGeometryFactory(GeometryProperties properties) {
+        if (properties.getDefaultSrid() != GeometryProperties.DEFAULT_SRID) {
+            log.info("Configuring GeometryFactory with SRID: {}", properties.getDefaultSrid());
+            GeometryFactoryProvider.setDefaultSrid(properties.getDefaultSrid());
+        }
+    }
+}

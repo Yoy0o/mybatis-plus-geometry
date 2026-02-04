@@ -1,0 +1,11 @@
+# This file defines code owners for the repository
+# Code owners are automatically requested for review when someone opens a pull request
+
+# Default owner for everything in the repo
+* @yoy0o
+
+# Specific owners for different areas
+/src/main/java/io/github/yoy0o/mybatis/geometry/handler/ @yoy0o
+/src/main/java/io/github/yoy0o/mybatis/geometry/strategy/ @yoy0o
+/.github/ @yoy0o
+/build.gradle @yoy0o

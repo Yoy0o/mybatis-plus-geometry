@@ -1,0 +1,50 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+bin/
+out/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+*.swp
+*.swo
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Logs
+*.log
+logs/
+
+# Local configuration
+local.properties
+gradle.properties.local
+
+# Test output
+test-output/
+.test/
+
+# Maven (if someone uses Maven wrapper)
+target/
+.mvn/
+
+# Sensitive files
+*.key
+*.pem
+secring.gpg
+pubring.gpg
+
+# Generated files
+generated/
+*.class

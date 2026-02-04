@@ -1,0 +1,5 @@
+/*
+ * Standalone settings for mybatis-plus-geometry library.
+ * This file is used when building the library independently.
+ */
+rootProject.name = 'mybatis-plus-geometry'
