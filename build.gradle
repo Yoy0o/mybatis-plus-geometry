@@ -34,7 +34,7 @@ dependencies {
     api 'org.locationtech.jts:jts-core:1.19.0'
     
     // MyBatis Plus - provided by user
-    compileOnly 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+    compileOnly 'com.baomidou:mybatis-plus-boot-starter:3.5.16'
     
     // Jackson for JSON serialization - optional
     compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.15.3'
@@ -53,7 +53,7 @@ dependencies {
     // Test dependencies
     testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.2'
     testImplementation 'net.jqwik:jqwik:1.8.2'
-    testImplementation 'com.baomidou:mybatis-plus-boot-starter:3.5.7'
+    testImplementation 'com.baomidou:mybatis-plus-boot-starter:3.5.16'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.15.3'
 }
 
