@@ -55,12 +55,33 @@ jobs:
         timeout-minutes: 30
         continue-on-error: false
       
+      - name: Upload to Central Portal
+        run: |
+          # Create base64 encoded credentials
+          CREDENTIALS=$(echo -n "${{ secrets.OSSRH_USERNAME }}:${{ secrets.OSSRH_PASSWORD }}" | base64)
+          
+          # Upload the default repository to Central Portal
+          curl -X POST \
+            -H "Authorization: Bearer $CREDENTIALS" \
+            -H "Content-Type: application/json" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/io.github.yoy0o?publishing_type=automatic"
+          
+          echo "Repository uploaded to Central Portal"
+        timeout-minutes: 5
+      
       - name: Retry Publish on Failure
         if: failure()
         run: |
           echo "First attempt failed, retrying after 30 seconds..."
           sleep 30
           ./gradlew publishMavenJavaPublicationToOSSRHRepository --no-daemon
+          
+          # Upload to Central Portal after retry
+          CREDENTIALS=$(echo -n "${{ secrets.OSSRH_USERNAME }}:${{ secrets.OSSRH_PASSWORD }}" | base64)
+          curl -X POST \
+            -H "Authorization: Bearer $CREDENTIALS" \
+            -H "Content-Type: application/json" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/io.github.yoy0o?publishing_type=automatic"
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
