@@ -23,19 +23,32 @@ import javax.sql.DataSource;
 /**
  * Spring Boot auto-configuration for MyBatis Plus Geometry Extension.
  * 
- * <p>This configuration is automatically applied when:</p>
+ * <p><strong>Activation Conditions:</strong></p>
  * <ul>
  *   <li>MyBatis Plus BaseMapper is on the classpath</li>
  *   <li>JTS Geometry is on the classpath</li>
  * </ul>
  * 
- * <p>Beans registered:</p>
+ * <p><strong>Registered Beans:</strong></p>
  * <ul>
- *   <li>GeometryHandlerStrategy - database-specific strategy</li>
- *   <li>PointTypeHandler - TypeHandler for Point</li>
- *   <li>PolygonTypeHandler - TypeHandler for Polygon</li>
- *   <li>LineStringTypeHandler - TypeHandler for LineString</li>
- *   <li>GeometryFieldInterceptor - SQL interceptor (conditional)</li>
+ *   <li><strong>GeometryHandlerStrategy</strong> - Database-specific strategy (auto-detected or configured)</li>
+ *   <li><strong>PointTypeHandler</strong> - TypeHandler for Point geometry</li>
+ *   <li><strong>PolygonTypeHandler</strong> - TypeHandler for Polygon geometry</li>
+ *   <li><strong>LineStringTypeHandler</strong> - TypeHandler for LineString geometry</li>
+ *   <li><strong>GeometryFieldInterceptor</strong> - SQL interceptor for SELECT queries (wraps geometry columns)</li>
+ * </ul>
+ * 
+ * <p><strong>Database Support:</strong></p>
+ * <ul>
+ *   <li><strong>MySQL:</strong> Direct WKB binary format</li>
+ *   <li><strong>PostgreSQL/PostGIS:</strong> Hex WKB string format</li>
+ * </ul>
+ * 
+ * <p><strong>Configuration Properties:</strong></p>
+ * <ul>
+ *   <li>mybatis.geometry.database-type - Override auto-detection (MYSQL or POSTGRESQL)</li>
+ *   <li>mybatis.geometry.default-srid - Default SRID for geometries (default: 4326)</li>
+ *   <li>mybatis.geometry.interceptor-enabled - Enable/disable SQL interceptor (default: true)</li>
  * </ul>
  * 
  * <p>Compatible with Spring Boot 2.7+ and Spring Boot 3.x</p>
@@ -67,7 +80,7 @@ public class GeometryAutoConfiguration {
     }
     
     /**
-     * Create GeometryFieldInterceptor bean.
+     * Create GeometryFieldInterceptor bean for SELECT queries.
      * Only created when interceptor is enabled (default: true).
      */
     @Bean
@@ -79,7 +92,7 @@ public class GeometryAutoConfiguration {
         matchIfMissing = true
     )
     public GeometryFieldInterceptor geometryFieldInterceptor(GeometryHandlerStrategy strategy) {
-        log.info("Registering GeometryFieldInterceptor");
+        log.info("Registering GeometryFieldInterceptor for SELECT queries");
         return new GeometryFieldInterceptor(strategy);
     }
     

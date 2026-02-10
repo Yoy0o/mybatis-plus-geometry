@@ -231,7 +231,14 @@ public class GeometryFieldInterceptor implements Interceptor {
             
             for (String fieldName : allFields) {
                 if (geometryFields.contains(fieldName)) {
-                    columnList.add("HEX(" + prefix + fieldName + ") AS " + fieldName);
+                    // Use strategy to wrap geometry column
+                    String wrappedColumn = strategy.wrapColumnForSelect(prefix + fieldName);
+                    // Extract alias from wrapped column or use fieldName
+                    if (wrappedColumn.toUpperCase().contains(" AS ")) {
+                        columnList.add(wrappedColumn);
+                    } else {
+                        columnList.add(wrappedColumn + " AS " + fieldName);
+                    }
                 } else {
                     columnList.add(prefix + fieldName);
                 }
@@ -308,7 +315,9 @@ public class GeometryFieldInterceptor implements Interceptor {
     private String processColumnForGeometry(String column, Set<String> geometryFields) {
         String upperColumn = column.toUpperCase();
         
-        if (upperColumn.contains("HEX(") || upperColumn.contains("COUNT(") || 
+        // Skip if already wrapped with function
+        if (upperColumn.contains("HEX(") || upperColumn.contains("ENCODE(") || 
+            upperColumn.contains("ST_ASBINARY(") || upperColumn.contains("COUNT(") || 
             upperColumn.contains("SUM(") || upperColumn.contains("AVG(")) {
             return column;
         }
@@ -321,9 +330,16 @@ public class GeometryFieldInterceptor implements Interceptor {
                 String[] parts = column.split("(?i)\\s+as\\s+", 2);
                 String colPart = parts[0].trim();
                 String aliasPart = parts[1].trim();
-                return "HEX(" + colPart + ") AS " + aliasPart;
+                // Use strategy to wrap geometry column
+                String wrappedColumn = strategy.wrapColumnForSelect(colPart);
+                // Extract the function part (before AS if exists)
+                if (wrappedColumn.toUpperCase().contains(" AS ")) {
+                    wrappedColumn = wrappedColumn.substring(0, wrappedColumn.toUpperCase().indexOf(" AS ")).trim();
+                }
+                return wrappedColumn + " AS " + aliasPart;
             } else {
-                return "HEX(" + column.trim() + ") AS " + columnName;
+                // Use strategy to wrap geometry column
+                return strategy.wrapColumnForSelect(column.trim());
             }
         }
         
