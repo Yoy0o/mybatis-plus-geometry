@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Architecture Refactoring)
+
+- **P0: Strategy Constructor Injection** — `AbstractGeometryTypeHandler` and all concrete TypeHandlers (`PointTypeHandler`, `PolygonTypeHandler`, `LineStringTypeHandler`) now accept `GeometryHandlerStrategy` via constructor injection. Backward-compatible no-arg and single-arg constructors are retained.
+- **P0: Auto-Configuration Wiring** — `GeometryAutoConfiguration` now injects the detected `GeometryHandlerStrategy` bean directly into TypeHandler constructors, eliminating dependency on global static state.
+- **P1: WkbCodec Interface** — Extracted `WkbCodec` interface with `MySQLWkbCodec` and `PostGISWkbCodec` implementations. Each Strategy now delegates encoding/decoding to its own Codec.
+- **P1: PostGIS EWKB Direct Encoding** — `PostGISWkbCodec` builds EWKB directly from JTS Geometry fields instead of parsing `WkbUtil.toWkbBytes()` byte offsets, eliminating tight coupling.
+- **P2: Interceptor Separation** — `GeometryFieldInterceptor` decomposed into `GeometryFieldResolver` (reflection + caching) and `GeometrySqlRewriter` (SQL parsing + rewriting), with interceptor acting as thin orchestrator.
+
+### Fixed
+
+- **Polygon Interior Ring Support** — `WkbUtil.toWkb(Polygon)` now serializes all rings (exterior + interior), fixing data loss for polygons with holes.
+
+### Added
+
+- `io.github.yoy0o.mybatis.geometry.codec.WkbCodec` — Codec interface for geometry encode/decode
+- `io.github.yoy0o.mybatis.geometry.codec.MySQLWkbCodec` — MySQL-specific codec (SRID prefix + WKB binary)
+- `io.github.yoy0o.mybatis.geometry.codec.PostGISWkbCodec` — PostGIS-specific codec (EWKB hex, direct from JTS)
+- `io.github.yoy0o.mybatis.geometry.interceptor.GeometryFieldResolver` — Field scanning and metadata caching
+- `io.github.yoy0o.mybatis.geometry.interceptor.GeometrySqlRewriter` — SQL rewriting logic
+
 ## [1.0.1] - 2025-06-09
 
 ### Fixed

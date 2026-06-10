@@ -55,7 +55,7 @@ public abstract class AbstractGeometryTypeHandler<T extends Geometry> extends Ba
      * Create a new AbstractGeometryTypeHandler with default SRID.
      */
     protected AbstractGeometryTypeHandler() {
-        this(WkbUtil.DEFAULT_SRID);
+        this(WkbUtil.DEFAULT_SRID, GeometryStrategyFactory.getDefaultStrategy());
     }
 
     /**
@@ -64,8 +64,19 @@ public abstract class AbstractGeometryTypeHandler<T extends Geometry> extends Ba
      * @param defaultSrid the default SRID to use
      */
     protected AbstractGeometryTypeHandler(int defaultSrid) {
+        this(defaultSrid, GeometryStrategyFactory.getDefaultStrategy());
+    }
+
+    /**
+     * Create a new AbstractGeometryTypeHandler with specified default SRID and strategy.
+     * This constructor supports dependency injection for testability.
+     *
+     * @param defaultSrid the default SRID to use
+     * @param strategy the database-specific geometry handler strategy
+     */
+    protected AbstractGeometryTypeHandler(int defaultSrid, GeometryHandlerStrategy strategy) {
         this.defaultSrid = defaultSrid;
-        this.strategy = GeometryStrategyFactory.getDefaultStrategy();
+        this.strategy = strategy;
     }
 
     @Override

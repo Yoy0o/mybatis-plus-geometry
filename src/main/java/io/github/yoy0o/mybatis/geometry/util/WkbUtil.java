@@ -13,9 +13,9 @@ import java.util.Arrays;
 /**
  * Utility class for WKB (Well-Known Binary) format conversion.
  * Provides thread-safe conversion between JTS geometry objects and WKB format.
- * 
+ *
  * <p>WKB format used includes SRID prefix (4 bytes) followed by standard WKB data.</p>
- * 
+ *
  * <p>Example usage:</p>
  * <pre>{@code
  * Point point = geometryFactory.createPoint(new Coordinate(121.5, 31.2));
@@ -24,19 +24,19 @@ import java.util.Arrays;
  * }</pre>
  */
 public final class WkbUtil {
-    
+
     private static final Logger log = LoggerFactory.getLogger(WkbUtil.class);
-    
+
     /** Default SRID (WGS84) */
     public static final int DEFAULT_SRID = 4326;
-    
+
     /** ThreadLocal WKBReader for thread-safe parsing */
     private static final ThreadLocal<WKBReader> WKB_READER = ThreadLocal.withInitial(WKBReader::new);
-    
+
     private WkbUtil() {
         // Utility class, prevent instantiation
     }
-    
+
     /**
      * Geometry type codes as defined in WKB specification.
      */
@@ -47,21 +47,21 @@ public final class WkbUtil {
         MULTIPOINT(4),
         MULTILINESTRING(5),
         MULTIPOLYGON(6);
-        
+
         private final int code;
-        
+
         GeometryType(int code) {
             this.code = code;
         }
-        
+
         public int getCode() {
             return code;
         }
     }
 
-    
+
     // ==================== Point Conversion ====================
-    
+
     /**
      * Convert JTS Point to WKB hex string.
      *
@@ -74,7 +74,7 @@ public final class WkbUtil {
         }
         return pointToWkb(point.getX(), point.getY(), getSrid(point));
     }
-    
+
     /**
      * Convert JTS Point to WKB byte array.
      *
@@ -93,7 +93,7 @@ public final class WkbUtil {
             throw new RuntimeException("Failed to convert Point to WKB bytes", e);
         }
     }
-    
+
     /**
      * Parse WKB hex string to JTS Point.
      *
@@ -109,12 +109,12 @@ public final class WkbUtil {
         if (geometry instanceof Point point) {
             return point;
         }
-        throw new IllegalArgumentException("WKB string is not a Point geometry, got: " + 
+        throw new IllegalArgumentException("WKB string is not a Point geometry, got: " +
             geometry.getGeometryType());
     }
-    
+
     // ==================== LineString Conversion ====================
-    
+
     /**
      * Convert JTS LineString to WKB hex string.
      *
@@ -133,7 +133,7 @@ public final class WkbUtil {
         }
         return lineStringToWkb(coords, getSrid(lineString));
     }
-    
+
     /**
      * Convert JTS LineString to WKB byte array.
      *
@@ -152,7 +152,7 @@ public final class WkbUtil {
             throw new RuntimeException("Failed to convert LineString to WKB bytes", e);
         }
     }
-    
+
     /**
      * Parse WKB hex string to JTS LineString.
      *
@@ -168,13 +168,13 @@ public final class WkbUtil {
         if (geometry instanceof LineString lineString) {
             return lineString;
         }
-        throw new IllegalArgumentException("WKB string is not a LineString geometry, got: " + 
+        throw new IllegalArgumentException("WKB string is not a LineString geometry, got: " +
             geometry.getGeometryType());
     }
 
-    
+
     // ==================== Polygon Conversion ====================
-    
+
     /**
      * Convert JTS Polygon to WKB hex string.
      *
@@ -185,17 +185,36 @@ public final class WkbUtil {
         if (polygon == null) {
             return null;
         }
-        // Only process exterior ring for now
-        LineString exteriorRing = polygon.getExteriorRing();
-        Coordinate[] coordinates = exteriorRing.getCoordinates();
-        double[][] coords = new double[coordinates.length][2];
-        for (int i = 0; i < coordinates.length; i++) {
-            coords[i][0] = coordinates[i].x;
-            coords[i][1] = coordinates[i].y;
+        int srid = getSrid(polygon);
+        int numRings = 1 + polygon.getNumInteriorRing();
+
+        // Calculate total points across all rings
+        int totalPoints = polygon.getExteriorRing().getNumPoints();
+        for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+            totalPoints += polygon.getInteriorRingN(i).getNumPoints();
         }
-        return polygonToWkb(coords, getSrid(polygon));
+
+        // SRID(4) + byte_order(1) + type(4) + numRings(4) + per-ring: numPoints(4) + points(16*n)
+        int size = 4 + 1 + 4 + 4 + numRings * 4 + totalPoints * 16;
+        ByteBuffer buffer = ByteBuffer.allocate(size);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+        buffer.putInt(srid);
+        buffer.put((byte) 1); // little-endian
+        buffer.putInt(GeometryType.POLYGON.getCode());
+        buffer.putInt(numRings);
+
+        // Write exterior ring
+        writeRingToBuffer(buffer, polygon.getExteriorRing());
+
+        // Write interior rings (holes)
+        for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+            writeRingToBuffer(buffer, polygon.getInteriorRingN(i));
+        }
+
+        return Hex.encodeHexString(buffer.array()).toUpperCase();
     }
-    
+
     /**
      * Convert JTS Polygon to WKB byte array.
      *
@@ -214,7 +233,7 @@ public final class WkbUtil {
             throw new RuntimeException("Failed to convert Polygon to WKB bytes", e);
         }
     }
-    
+
     /**
      * Parse WKB hex string to JTS Polygon.
      *
@@ -230,12 +249,12 @@ public final class WkbUtil {
         if (geometry instanceof Polygon polygon) {
             return polygon;
         }
-        throw new IllegalArgumentException("WKB string is not a Polygon geometry, got: " + 
+        throw new IllegalArgumentException("WKB string is not a Polygon geometry, got: " +
             geometry.getGeometryType());
     }
-    
+
     // ==================== Generic Conversion ====================
-    
+
     /**
      * Convert any JTS Geometry to WKB hex string.
      *
@@ -247,7 +266,7 @@ public final class WkbUtil {
         if (geometry == null) {
             return null;
         }
-        
+
         if (geometry instanceof Point point) {
             return toWkb(point);
         } else if (geometry instanceof LineString lineString) {
@@ -258,7 +277,7 @@ public final class WkbUtil {
             throw new IllegalArgumentException("Unsupported geometry type: " + geometry.getGeometryType());
         }
     }
-    
+
     /**
      * Convert any JTS Geometry to WKB byte array.
      *
@@ -269,7 +288,7 @@ public final class WkbUtil {
         if (geometry == null) {
             return null;
         }
-        
+
         if (geometry instanceof Point point) {
             return toWkbBytes(point);
         } else if (geometry instanceof LineString lineString) {
@@ -280,7 +299,7 @@ public final class WkbUtil {
             throw new IllegalArgumentException("Unsupported geometry type: " + geometry.getGeometryType());
         }
     }
-    
+
     /**
      * Parse WKB hex string to JTS Geometry.
      *
@@ -292,22 +311,22 @@ public final class WkbUtil {
         if (wkbHex == null || wkbHex.isEmpty()) {
             return null;
         }
-        
+
         try {
             byte[] wkbBytes = Hex.decodeHex(wkbHex);
-            
+
             // Skip SRID prefix (4 bytes)
             byte[] wkbWithoutSrid = Arrays.copyOfRange(wkbBytes, 4, wkbBytes.length);
-            
+
             // Parse using thread-safe WKBReader
             Geometry geometry = WKB_READER.get().read(wkbWithoutSrid);
-            
+
             // Read SRID from original bytes
             ByteBuffer buffer = ByteBuffer.wrap(wkbBytes);
             buffer.order(ByteOrder.LITTLE_ENDIAN);
             int srid = buffer.getInt();
             geometry.setSRID(srid);
-            
+
             return geometry;
         } catch (Exception e) {
             String prefix = wkbHex.length() > 20 ? wkbHex.substring(0, 20) + "..." : wkbHex;
@@ -316,9 +335,9 @@ public final class WkbUtil {
         }
     }
 
-    
+
     // ==================== Thread Safety ====================
-    
+
     /**
      * Clean up ThreadLocal resources.
      * Should be called when thread is about to be destroyed or reused.
@@ -326,7 +345,7 @@ public final class WkbUtil {
     public static void cleanupThreadLocal() {
         WKB_READER.remove();
     }
-    
+
     /**
      * Get the default SRID value.
      *
@@ -335,69 +354,78 @@ public final class WkbUtil {
     public static int getDefaultSrid() {
         return DEFAULT_SRID;
     }
-    
+
     // ==================== Private Helper Methods ====================
-    
+
     private static int getSrid(Geometry geometry) {
         return geometry.getSRID() == 0 ? DEFAULT_SRID : geometry.getSRID();
     }
-    
+
     private static String pointToWkb(double longitude, double latitude, int srid) {
         try {
             ByteBuffer buffer = ByteBuffer.allocate(25);
             buffer.order(ByteOrder.LITTLE_ENDIAN);
-            
+
             // SRID (4 bytes)
             buffer.putInt(srid);
-            
+
             // Byte order (1 byte): 1 = little-endian
             buffer.put((byte) 1);
-            
+
             // Geometry type (4 bytes)
             buffer.putInt(GeometryType.POINT.getCode());
-            
+
             // Coordinates (8 bytes + 8 bytes)
             buffer.putDouble(longitude);
             buffer.putDouble(latitude);
-            
+
             return Hex.encodeHexString(buffer.array()).toUpperCase();
         } catch (Exception e) {
             log.error("Failed to create Point WKB", e);
             throw new RuntimeException("Failed to create Point WKB", e);
         }
     }
-    
+
     private static String lineStringToWkb(double[][] coordinates, int srid) {
         try {
             int size = 9 + (coordinates.length * 16); // Base 9 bytes + 16 bytes per point
             ByteBuffer buffer = ByteBuffer.allocate(size + 4); // Add 4 bytes for SRID
             buffer.order(ByteOrder.LITTLE_ENDIAN);
-            
+
             // SRID
             buffer.putInt(srid);
-            
+
             // Byte order
             buffer.put((byte) 1);
-            
+
             // Geometry type
             buffer.putInt(GeometryType.LINESTRING.getCode());
-            
+
             // Number of points
             buffer.putInt(coordinates.length);
-            
+
             // Write all coordinates
             for (double[] coord : coordinates) {
                 buffer.putDouble(coord[0]);
                 buffer.putDouble(coord[1]);
             }
-            
+
             return Hex.encodeHexString(buffer.array()).toUpperCase();
         } catch (Exception e) {
             log.error("Failed to create LineString WKB", e);
             throw new RuntimeException("Failed to create LineString WKB", e);
         }
     }
-    
+
+    private static void writeRingToBuffer(ByteBuffer buffer, LineString ring) {
+        Coordinate[] coords = ring.getCoordinates();
+        buffer.putInt(coords.length);
+        for (Coordinate c : coords) {
+            buffer.putDouble(c.x);
+            buffer.putDouble(c.y);
+        }
+    }
+
     private static String polygonToWkb(double[][] coordinates, int srid) {
         try {
             // Ensure polygon is closed
@@ -405,32 +433,32 @@ public final class WkbUtil {
                 coordinates = Arrays.copyOf(coordinates, coordinates.length + 1);
                 coordinates[coordinates.length - 1] = coordinates[0];
             }
-            
+
             int size = 13 + (coordinates.length * 16); // Base 13 bytes + 16 bytes per point
             ByteBuffer buffer = ByteBuffer.allocate(size + 4); // Add 4 bytes for SRID
             buffer.order(ByteOrder.LITTLE_ENDIAN);
-            
+
             // SRID
             buffer.putInt(srid);
-            
+
             // Byte order
             buffer.put((byte) 1);
-            
+
             // Geometry type
             buffer.putInt(GeometryType.POLYGON.getCode());
-            
+
             // Number of rings (1 for exterior ring only)
             buffer.putInt(1);
-            
+
             // Number of points
             buffer.putInt(coordinates.length);
-            
+
             // Write all coordinates
             for (double[] coord : coordinates) {
                 buffer.putDouble(coord[0]);
                 buffer.putDouble(coord[1]);
             }
-            
+
             return Hex.encodeHexString(buffer.array()).toUpperCase();
         } catch (Exception e) {
             log.error("Failed to create Polygon WKB", e);

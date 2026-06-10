@@ -1,8 +1,8 @@
 package io.github.yoy0o.mybatis.geometry.strategy;
 
+import io.github.yoy0o.mybatis.geometry.codec.PostGISWkbCodec;
+import io.github.yoy0o.mybatis.geometry.codec.WkbCodec;
 import io.github.yoy0o.mybatis.geometry.exception.GeometryConversionException;
-import io.github.yoy0o.mybatis.geometry.util.WkbUtil;
-import org.apache.commons.codec.binary.Hex;
 import org.locationtech.jts.geom.Geometry;
 
 /**
@@ -33,6 +33,8 @@ import org.locationtech.jts.geom.Geometry;
  * </ul>
  */
 public class PostGISGeometryStrategy implements GeometryHandlerStrategy {
+
+    private final WkbCodec codec = new PostGISWkbCodec();
 
     @Override
     public DatabaseType getSupportedDatabaseType() {
@@ -79,38 +81,7 @@ public class PostGISGeometryStrategy implements GeometryHandlerStrategy {
         if (geometry == null) {
             return null;
         }
-        // Convert JTS Geometry to PostGIS EWKB hex format
-        // EWKB format: byte_order(1) + type_with_srid_flag(4) + srid(4) + geometry_data
-        // PostGIS geometry columns directly accept hex EWKB string
-        return toEwkbHex(geometry);
-    }
-
-    /**
-     * Convert JTS Geometry to EWKB hex string for PostGIS.
-     * EWKB format includes SRID flag in the type field.
-     */
-    private String toEwkbHex(Geometry geometry) {
-        // Get standard WKB from WkbUtil (which includes our custom 4-byte SRID prefix)
-        byte[] customWkb = WkbUtil.toWkbBytes(geometry);
-        // customWkb format: SRID(4 bytes LE) + byte_order(1) + type(4) + data
-
-        // Extract components
-        java.nio.ByteBuffer buf = java.nio.ByteBuffer.wrap(customWkb);
-        buf.order(java.nio.ByteOrder.LITTLE_ENDIAN);
-        int srid = buf.getInt();           // 4 bytes: SRID
-        byte byteOrder = buf.get();        // 1 byte: byte order (1=LE)
-        int wkbType = buf.getInt();        // 4 bytes: geometry type
-
-        // Build EWKB: byte_order + (type | 0x20000000) + srid + remaining data
-        int remaining = customWkb.length - 9; // total - 4(srid) - 1(byte_order) - 4(type)
-        java.nio.ByteBuffer ewkb = java.nio.ByteBuffer.allocate(1 + 4 + 4 + remaining);
-        ewkb.order(java.nio.ByteOrder.LITTLE_ENDIAN);
-        ewkb.put(byteOrder);                        // byte order
-        ewkb.putInt(wkbType | 0x20000000);          // type with SRID flag
-        ewkb.putInt(srid);                          // SRID
-        ewkb.put(customWkb, 9, remaining);          // geometry data (coordinates etc.)
-
-        return Hex.encodeHexString(ewkb.array());
+        return codec.encode(geometry);
     }
 
     @Override
@@ -118,17 +89,14 @@ public class PostGISGeometryStrategy implements GeometryHandlerStrategy {
         if (dbValue == null) {
             return null;
         }
-
-        if (dbValue instanceof String hexString) {
-            // Parse hex WKB string returned from encode(ST_AsBinary())
-            // WkbUtil expects format: SRID(4 bytes) + standard WKB
-            return WkbUtil.fromWkb(hexString);
+        try {
+            return codec.decode(dbValue);
+        } catch (IllegalArgumentException e) {
+            throw new GeometryConversionException(
+                "Unexpected database value type",
+                "Geometry",
+                dbValue.getClass().getName()
+            );
         }
-
-        throw new GeometryConversionException(
-            "Unexpected database value type",
-            "Geometry",
-            dbValue.getClass().getName()
-        );
     }
 }
