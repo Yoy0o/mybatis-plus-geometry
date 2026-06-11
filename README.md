@@ -319,6 +319,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ## Related Documentation
 
 - [Quick Start Guide](.github/QUICK_START.md)
+- [Configuration Reference](docs/CONFIGURATION.md)
 - [Git Setup Guide](docs/GIT_SETUP.md)
 - [Security Policy](SECURITY.md)
 - [Contributing Guide](CONTRIBUTING.md)

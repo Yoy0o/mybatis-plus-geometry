@@ -319,6 +319,7 @@ init-git.bat
 ## 相关文档
 
 - [快速开始指南](.github/QUICK_START_zh.md)
+- [配置参考](docs/CONFIGURATION_zh.md)
 - [Git 设置指南](docs/GIT_SETUP_zh.md)
 - [安全策略](SECURITY_zh.md)
 - [贡献指南](CONTRIBUTING_zh.md)
