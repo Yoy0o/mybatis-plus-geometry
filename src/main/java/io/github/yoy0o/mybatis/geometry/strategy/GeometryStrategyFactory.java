@@ -14,20 +14,20 @@ import java.util.concurrent.ConcurrentHashMap;
  * Supports auto-detection of database type from DataSource.
  */
 public final class GeometryStrategyFactory {
-    
+
     private static final Logger log = LoggerFactory.getLogger(GeometryStrategyFactory.class);
-    
+
     /** Cached strategy instances */
-    private static final Map<DatabaseType, GeometryHandlerStrategy> STRATEGY_CACHE = 
+    private static final Map<DatabaseType, GeometryHandlerStrategy> STRATEGY_CACHE =
         new ConcurrentHashMap<>();
-    
+
     /** Default strategy (MySQL) */
     private static volatile GeometryHandlerStrategy defaultStrategy;
-    
+
     private GeometryStrategyFactory() {
         // Utility class, prevent instantiation
     }
-    
+
     /**
      * Get strategy for the specified database type.
      *
@@ -42,32 +42,37 @@ public final class GeometryStrategyFactory {
             };
         });
     }
-    
+
     /**
-     * Get the default strategy (MySQL).
+     * Get the default strategy. If not set, returns MySQL strategy as fallback.
+     * Uses double-check locking for fallback initialization only.
      *
      * @return the default strategy
      */
     public static GeometryHandlerStrategy getDefaultStrategy() {
-        if (defaultStrategy == null) {
+        GeometryHandlerStrategy s = defaultStrategy; // volatile read
+        if (s == null) {
             synchronized (GeometryStrategyFactory.class) {
-                if (defaultStrategy == null) {
-                    defaultStrategy = getStrategy(DatabaseType.MYSQL);
+                s = defaultStrategy;
+                if (s == null) {
+                    s = getStrategy(DatabaseType.MYSQL);
+                    defaultStrategy = s;
                 }
             }
         }
-        return defaultStrategy;
+        return s;
     }
-    
+
     /**
-     * Set the default strategy.
+     * Set the default strategy. Uses volatile write semantics to guarantee
+     * immediate visibility to all threads.
      *
      * @param strategy the strategy to use as default
      */
-    public static synchronized void setDefaultStrategy(GeometryHandlerStrategy strategy) {
-        defaultStrategy = strategy;
+    public static void setDefaultStrategy(GeometryHandlerStrategy strategy) {
+        defaultStrategy = strategy; // volatile write, no synchronized needed
     }
-    
+
     /**
      * Auto-detect database type from DataSource and return appropriate strategy.
      *
@@ -78,7 +83,7 @@ public final class GeometryStrategyFactory {
         DatabaseType dbType = detectDatabaseType(dataSource);
         return getStrategy(dbType);
     }
-    
+
     /**
      * Detect database type from DataSource.
      *
@@ -90,48 +95,48 @@ public final class GeometryStrategyFactory {
             log.warn("DataSource is null, defaulting to MySQL");
             return DatabaseType.MYSQL;
         }
-        
+
         try (Connection conn = dataSource.getConnection()) {
             String url = conn.getMetaData().getURL();
-            
+
             if (url != null) {
                 String lowerUrl = url.toLowerCase();
-                
+
                 if (lowerUrl.contains("mysql") || lowerUrl.contains("mariadb")) {
                     log.debug("Detected MySQL database from URL: {}", url);
                     return DatabaseType.MYSQL;
                 }
-                
+
                 if (lowerUrl.contains("postgresql") || lowerUrl.contains("postgres")) {
                     log.debug("Detected PostgreSQL database from URL: {}", url);
                     return DatabaseType.POSTGRESQL;
                 }
             }
-            
+
             // Try to detect from driver name
             String driverName = conn.getMetaData().getDriverName();
             if (driverName != null) {
                 String lowerDriver = driverName.toLowerCase();
-                
+
                 if (lowerDriver.contains("mysql") || lowerDriver.contains("mariadb")) {
                     log.debug("Detected MySQL database from driver: {}", driverName);
                     return DatabaseType.MYSQL;
                 }
-                
+
                 if (lowerDriver.contains("postgresql") || lowerDriver.contains("postgres")) {
                     log.debug("Detected PostgreSQL database from driver: {}", driverName);
                     return DatabaseType.POSTGRESQL;
                 }
             }
-            
+
         } catch (SQLException e) {
             log.warn("Failed to detect database type from DataSource: {}", e.getMessage());
         }
-        
+
         log.warn("Could not detect database type, defaulting to MySQL");
         return DatabaseType.MYSQL;
     }
-    
+
     /**
      * Detect database type from JDBC URL string.
      *
@@ -143,23 +148,23 @@ public final class GeometryStrategyFactory {
             log.warn("JDBC URL is null or empty, defaulting to MySQL");
             return DatabaseType.MYSQL;
         }
-        
+
         String lowerUrl = jdbcUrl.toLowerCase();
-        
+
         if (lowerUrl.contains("mysql") || lowerUrl.contains("mariadb")) {
             log.debug("Detected MySQL database from URL: {}", jdbcUrl);
             return DatabaseType.MYSQL;
         }
-        
+
         if (lowerUrl.contains("postgresql") || lowerUrl.contains("postgres")) {
             log.debug("Detected PostgreSQL database from URL: {}", jdbcUrl);
             return DatabaseType.POSTGRESQL;
         }
-        
+
         log.warn("Could not detect database type from URL: {}, defaulting to MySQL", jdbcUrl);
         return DatabaseType.MYSQL;
     }
-    
+
     /**
      * Clear the strategy cache.
      * Useful for testing or reconfiguration.

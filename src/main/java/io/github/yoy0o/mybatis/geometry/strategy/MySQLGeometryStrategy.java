@@ -20,7 +20,17 @@ public class MySQLGeometryStrategy implements GeometryHandlerStrategy {
 
     @Override
     public String wrapColumnForSelect(String columnName) {
-        return "HEX(" + columnName + ") AS " + columnName;
+        String alias = extractSimpleColumnName(columnName);
+        return "HEX(" + columnName + ") AS " + alias;
+    }
+
+    /**
+     * Extract simple column name from potentially qualified name (e.g., "t.location" → "location").
+     * Takes the part after the last dot to ensure the alias does not contain dots.
+     */
+    private String extractSimpleColumnName(String columnName) {
+        int dotIndex = columnName.lastIndexOf('.');
+        return dotIndex >= 0 ? columnName.substring(dotIndex + 1) : columnName;
     }
 
     @Override

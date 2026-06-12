@@ -103,9 +103,26 @@ public class WarehouseService {
 
 ## GeoJSON 支持
 
-对于 REST API，使用提供的 Jackson 序列化器：
+当 Jackson 存在于 classpath 时，GeoJSON 序列化自动启用。`GeometryJacksonModule` 通过 Spring Boot 自动配置注册，无需手动配置。
 
-### DTO 定义
+### 自动序列化（推荐）
+
+`GeometryJacksonModule` 自动注册后，DTO 或实体中的 `Point`、`LineString`、`Polygon` 字段会自动进行 GeoJSON 格式的序列化/反序列化：
+
+```java
+public class WarehouseDTO {
+    
+    private Long id;
+    private String name;
+    private Point location;  // 自动序列化为 GeoJSON
+    
+    // getters and setters
+}
+```
+
+### 显式注解（可选）
+
+如果需要显式控制，或者自动配置被禁用，可以使用注解：
 
 ```java
 import io.github.yoy0o.mybatis.geometry.jackson.PointSerializer;
@@ -171,6 +188,8 @@ mybatis:
     # 支持的值：MYSQL、POSTGRESQL
     database-type: MYSQL
 ```
+
+> **说明：** 当 `default-srid` 为 4326（WGS84）时，GeoJSON 反序列化器自动校验坐标范围（经度 -180~180，纬度 -90~90）。当使用其他 SRID（如 3857）时，范围校验自动禁用，仅检查坐标是否为有限数值。
 
 ## 数据库支持
 
@@ -254,6 +273,7 @@ Java Point/Polygon 对象
 
 | 类 | 说明 |
 |----|------|
+| `GeometryJacksonModule` | 自动注册的 Jackson Module（零配置） |
 | `PointSerializer` / `PointDeserializer` | GeoJSON Point 序列化 |
 | `PolygonSerializer` / `PolygonDeserializer` | GeoJSON Polygon 序列化 |
 | `LineStringSerializer` / `LineStringDeserializer` | GeoJSON LineString 序列化 |

@@ -9,7 +9,7 @@ repositories {
 }
 
 group = 'io.github.yoy0o'
-version = '1.0.1'
+version = project.property('version')
 description = 'MyBatis Plus extension for JTS geometry types with Spring Boot auto-configuration'
 
 jar {
@@ -38,9 +38,6 @@ dependencies {
 
     // Jackson for JSON serialization - optional
     compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.15.3'
-
-    // Apache Commons Codec for hex encoding
-    implementation 'commons-codec:commons-codec:1.16.0'
 
     // Spring Boot (optional, for auto-configuration)
     compileOnly 'org.springframework.boot:spring-boot-autoconfigure:3.2.2'

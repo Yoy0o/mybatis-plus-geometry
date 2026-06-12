@@ -115,20 +115,14 @@ public class StoreService {
 
 ## 6. REST API with GeoJSON
 
+GeoJSON serialization is automatic when Jackson is on the classpath — no annotations needed:
+
 ### DTO
 ```java
-import io.github.yoy0o.mybatis.geometry.jackson.PointSerializer;
-import io.github.yoy0o.mybatis.geometry.jackson.PointDeserializer;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-
 public class StoreDTO {
     private Long id;
     private String name;
-    
-    @JsonSerialize(using = PointSerializer.class)
-    @JsonDeserialize(using = PointDeserializer.class)
-    private Point location;
+    private Point location;  // Automatically serialized as GeoJSON
     
     // getters and setters
 }
@@ -168,8 +162,10 @@ mybatis:
   geometry:
     default-srid: 4326
     interceptor-enabled: true
-    database-type: MYSQL  # or POSTGRESQL
+    database-type: MYSQL  # or POSTGRESQL (auto-detected if omitted)
 ```
+
+> Coordinate range validation is automatically enabled when SRID is 4326, and disabled for other SRIDs.
 
 ## That's It!
 

@@ -117,20 +117,14 @@ public class StoreService {
 
 ## 6. REST API 使用 GeoJSON
 
+GeoJSON 序列化在 Jackson 存在于 classpath 时自动启用，无需添加注解：
+
 ### DTO
 ```java
-import io.github.yoy0o.mybatis.geometry.jackson.PointSerializer;
-import io.github.yoy0o.mybatis.geometry.jackson.PointDeserializer;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-
 public class StoreDTO {
     private Long id;
     private String name;
-    
-    @JsonSerialize(using = PointSerializer.class)
-    @JsonDeserialize(using = PointDeserializer.class)
-    private Point location;
+    private Point location;  // 自动序列化为 GeoJSON
     
     // getters and setters
 }
@@ -170,8 +164,10 @@ mybatis:
   geometry:
     default-srid: 4326
     interceptor-enabled: true
-    database-type: MYSQL  # 或 POSTGRESQL
+    database-type: MYSQL  # 或 POSTGRESQL（不指定则自动检测）
 ```
+
+> 当 SRID 为 4326 时自动启用坐标范围校验，其他 SRID 值自动禁用。
 
 ## 完成！
 

@@ -7,25 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed (Architecture Refactoring)
+### Changed
 
-- **P0: Strategy Constructor Injection** — `AbstractGeometryTypeHandler` and all concrete TypeHandlers (`PointTypeHandler`, `PolygonTypeHandler`, `LineStringTypeHandler`) now accept `GeometryHandlerStrategy` via constructor injection. Backward-compatible no-arg and single-arg constructors are retained.
-- **P0: Auto-Configuration Wiring** — `GeometryAutoConfiguration` now injects the detected `GeometryHandlerStrategy` bean directly into TypeHandler constructors, eliminating dependency on global static state.
-- **P1: WkbCodec Interface** — Extracted `WkbCodec` interface with `MySQLWkbCodec` and `PostGISWkbCodec` implementations. Each Strategy now delegates encoding/decoding to its own Codec.
-- **P1: PostGIS EWKB Direct Encoding** — `PostGISWkbCodec` builds EWKB directly from JTS Geometry fields instead of parsing `WkbUtil.toWkbBytes()` byte offsets, eliminating tight coupling.
-- **P2: Interceptor Separation** — `GeometryFieldInterceptor` decomposed into `GeometryFieldResolver` (reflection + caching) and `GeometrySqlRewriter` (SQL parsing + rewriting), with interceptor acting as thin orchestrator.
+- **WKB Codec → JTS Official Implementation** — `MySQLWkbCodec` and `PostGISWkbCodec` rewritten to use JTS `WKBWriter`/`WKBReader`. Eliminates hand-written byte manipulation, supports all geometry types (including Multi* and GeometryCollection), and is thread-safe via per-call instance creation.
+- **TypeHandler Strategy Injection** — `AbstractGeometryTypeHandler` and concrete TypeHandlers accept `GeometryHandlerStrategy` via constructor injection. No-arg constructors are retained for MyBatis annotation-based reflection, pulling from `GeometryStrategyFactory.getDefaultStrategy()`.
+- **Auto-Configuration Strategy Sync** — `GeometryAutoConfiguration.geometryHandlerStrategy()` calls `GeometryStrategyFactory.setDefaultStrategy(strategy)` before returning, guaranteeing TypeHandlers created via reflection share the same instance as the Spring Bean.
+- **GeometryStrategyFactory Concurrency** — `defaultStrategy` field uses `volatile` write semantics (removed redundant `synchronized` on setter). `getDefaultStrategy()` retains double-check locking for safe fallback initialization to MySQL.
+- **Interceptor Decomposition** — `GeometryFieldInterceptor` split into `GeometryFieldResolver` (reflection + caching) and `GeometrySqlRewriter` (SQL parsing + rewriting), with the interceptor as a thin orchestrator.
+- **SQL Field Splitting** — `GeometrySqlRewriter.splitSelectFields()` uses parenthesis depth counting to correctly skip commas inside function calls (e.g., `COALESCE(a, b)`). Expressions containing `(` are never wrapped as geometry columns.
+- **Hex Encoding** — All hex encode/decode operations migrated from Apache Commons Codec to `java.util.HexFormat` (JDK 17+).
 
 ### Fixed
 
-- **Polygon Interior Ring Support** — `WkbUtil.toWkb(Polygon)` now serializes all rings (exterior + interior), fixing data loss for polygons with holes.
+- **SQL Alias Dot Bug** — `wrapColumnForSelect("t.location")` previously generated invalid alias `AS t.location`. Now extracts the part after the last dot: `HEX(t.location) AS location`. Applied to both MySQL and PostGIS strategies.
+- **Polygon Interior Rings** — `WkbUtil.toWkb(Polygon)` now serializes all rings (exterior + interior), fixing silent data loss for polygons with holes.
+- **Version Number Mismatch** — `build.gradle` no longer hardcodes the version string; reads from `gradle.properties` as the single source of truth.
+- **.gitignore Over-Exclusion** — Removed `demo/` and `src/test/` ignore rules that prevented source code from being tracked.
 
 ### Added
 
-- `io.github.yoy0o.mybatis.geometry.codec.WkbCodec` — Codec interface for geometry encode/decode
-- `io.github.yoy0o.mybatis.geometry.codec.MySQLWkbCodec` — MySQL-specific codec (SRID prefix + WKB binary)
-- `io.github.yoy0o.mybatis.geometry.codec.PostGISWkbCodec` — PostGIS-specific codec (EWKB hex, direct from JTS)
-- `io.github.yoy0o.mybatis.geometry.interceptor.GeometryFieldResolver` — Field scanning and metadata caching
-- `io.github.yoy0o.mybatis.geometry.interceptor.GeometrySqlRewriter` — SQL rewriting logic
+- `GeometryJacksonModule` — Unified Jackson Module that auto-registers Point/LineString/Polygon serializers and deserializers via Spring Boot `@AutoConfiguration`. Zero user configuration required when Jackson is on the classpath.
+- **Automatic Coordinate Validation** — When `default-srid` is 4326 (WGS84), GeoJSON deserializers validate coordinate ranges (lng -180~180, lat -90~90). For any other SRID, range validation is automatically disabled and only finite-number checks apply. No separate configuration property needed.
+- `GeoJsonParseException` — Structured exceptions with explicit field names (`type`, `coordinates`) for all malformed GeoJSON input scenarios.
+- `WkbCodec` interface — Clean abstraction for database-specific geometry encoding/decoding, with `MySQLWkbCodec` (4-byte LE SRID + standard WKB) and `PostGISWkbCodec` (EWKB with SRID flag in type field).
+- `GeometryFieldResolver` — Dedicated class for entity field scanning, annotation detection, and metadata caching.
+
+### Removed
+
+- `commons-codec:commons-codec` runtime dependency — No longer needed; replaced by JDK 17+ `HexFormat` and JTS built-in WKB I/O.
 
 ## [1.0.1] - 2025-06-09
 
@@ -37,7 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Demo application (`demo/`) with REST CRUD endpoints for validation
 - Spring profiles support: `mysql`, `postgresql`, `mariadb`
 - GeoJSON format input/output via Jackson serializer registration
 - MariaDB 11.x compatibility verified
@@ -45,9 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Verified Database Support
 
-- MySQL 8.0 ✅ (remote AWS instance)
-- PostgreSQL 14 + PostGIS 3.x ✅ (local)
-- MariaDB 11.8 ✅ (Docker)
+- MySQL 8.0 ✅
+- PostgreSQL 14 + PostGIS 3.x ✅
+- MariaDB 11.8 ✅
 
 ## [1.0.0] - 2024-XX-XX
 
@@ -77,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MyBatis Plus 3.5.7 (compileOnly)
 - Spring Boot 2.7+ / 3.x (compileOnly)
 - Jackson Databind (compileOnly)
-- Apache Commons Codec 1.16.0
+- Apache Commons Codec 1.16.0 *(removed in Unreleased)*
 
 [Unreleased]: https://github.com/yoy0o/mybatis-plus-geometry/compare/v1.0.1...HEAD
 [1.0.1]: https://github.com/yoy0o/mybatis-plus-geometry/compare/v1.0.0...v1.0.1

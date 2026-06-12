@@ -1,6 +1,5 @@
 package io.github.yoy0o.mybatis.geometry.util;
 
-import org.apache.commons.codec.binary.Hex;
 import org.locationtech.jts.geom.*;
 import org.locationtech.jts.io.WKBReader;
 import org.slf4j.Logger;
@@ -9,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.HexFormat;
 
 /**
  * Utility class for WKB (Well-Known Binary) format conversion.
@@ -87,7 +87,7 @@ public final class WkbUtil {
         }
         try {
             String hexString = toWkb(point);
-            return Hex.decodeHex(hexString);
+            return HexFormat.of().parseHex(hexString);
         } catch (Exception e) {
             log.error("Failed to convert Point to WKB bytes: {}", e.getMessage());
             throw new RuntimeException("Failed to convert Point to WKB bytes", e);
@@ -146,7 +146,7 @@ public final class WkbUtil {
         }
         try {
             String hexString = toWkb(lineString);
-            return Hex.decodeHex(hexString);
+            return HexFormat.of().parseHex(hexString);
         } catch (Exception e) {
             log.error("Failed to convert LineString to WKB bytes: {}", e.getMessage());
             throw new RuntimeException("Failed to convert LineString to WKB bytes", e);
@@ -212,7 +212,7 @@ public final class WkbUtil {
             writeRingToBuffer(buffer, polygon.getInteriorRingN(i));
         }
 
-        return Hex.encodeHexString(buffer.array()).toUpperCase();
+        return HexFormat.of().formatHex(buffer.array()).toUpperCase();
     }
 
     /**
@@ -227,7 +227,7 @@ public final class WkbUtil {
         }
         try {
             String hexString = toWkb(polygon);
-            return Hex.decodeHex(hexString);
+            return HexFormat.of().parseHex(hexString);
         } catch (Exception e) {
             log.error("Failed to convert Polygon to WKB bytes: {}", e.getMessage());
             throw new RuntimeException("Failed to convert Polygon to WKB bytes", e);
@@ -313,7 +313,7 @@ public final class WkbUtil {
         }
 
         try {
-            byte[] wkbBytes = Hex.decodeHex(wkbHex);
+            byte[] wkbBytes = HexFormat.of().parseHex(wkbHex);
 
             // Skip SRID prefix (4 bytes)
             byte[] wkbWithoutSrid = Arrays.copyOfRange(wkbBytes, 4, wkbBytes.length);
@@ -379,7 +379,7 @@ public final class WkbUtil {
             buffer.putDouble(longitude);
             buffer.putDouble(latitude);
 
-            return Hex.encodeHexString(buffer.array()).toUpperCase();
+            return HexFormat.of().formatHex(buffer.array()).toUpperCase();
         } catch (Exception e) {
             log.error("Failed to create Point WKB", e);
             throw new RuntimeException("Failed to create Point WKB", e);
@@ -410,7 +410,7 @@ public final class WkbUtil {
                 buffer.putDouble(coord[1]);
             }
 
-            return Hex.encodeHexString(buffer.array()).toUpperCase();
+            return HexFormat.of().formatHex(buffer.array()).toUpperCase();
         } catch (Exception e) {
             log.error("Failed to create LineString WKB", e);
             throw new RuntimeException("Failed to create LineString WKB", e);
@@ -459,7 +459,7 @@ public final class WkbUtil {
                 buffer.putDouble(coord[1]);
             }
 
-            return Hex.encodeHexString(buffer.array()).toUpperCase();
+            return HexFormat.of().formatHex(buffer.array()).toUpperCase();
         } catch (Exception e) {
             log.error("Failed to create Polygon WKB", e);
             throw new RuntimeException("Failed to create Polygon WKB", e);

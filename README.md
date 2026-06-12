@@ -103,9 +103,26 @@ public class WarehouseService {
 
 ## GeoJSON Support
 
-For REST APIs, use the provided Jackson serializers:
+GeoJSON serialization is automatically enabled when Jackson is on the classpath. The `GeometryJacksonModule` is registered via Spring Boot auto-configuration — no manual setup required.
 
-### DTO Definition
+### Automatic Serialization (Recommended)
+
+With `GeometryJacksonModule` auto-registered, any `Point`, `LineString`, or `Polygon` field in your DTOs or entities will be serialized/deserialized as GeoJSON automatically:
+
+```java
+public class WarehouseDTO {
+    
+    private Long id;
+    private String name;
+    private Point location;  // Automatically serialized as GeoJSON
+    
+    // getters and setters
+}
+```
+
+### Explicit Annotation (Optional)
+
+If you prefer explicit control, or if auto-configuration is disabled, you can use annotations:
 
 ```java
 import io.github.yoy0o.mybatis.geometry.jackson.PointSerializer;
@@ -171,6 +188,8 @@ mybatis:
     # Supported values: MYSQL, POSTGRESQL
     database-type: MYSQL
 ```
+
+> **Note:** When `default-srid` is set to 4326 (WGS84), GeoJSON deserializers automatically validate coordinate ranges (longitude -180~180, latitude -90~90). For other SRID values (e.g., 3857), range validation is automatically disabled and only checks that coordinates are finite.
 
 ## Database Support
 
@@ -254,6 +273,7 @@ Java Point/Polygon object
 
 | Class | Description |
 |-------|-------------|
+| `GeometryJacksonModule` | Auto-registered Jackson Module (zero-config) |
 | `PointSerializer` / `PointDeserializer` | GeoJSON Point serialization |
 | `PolygonSerializer` / `PolygonDeserializer` | GeoJSON Polygon serialization |
 | `LineStringSerializer` / `LineStringDeserializer` | GeoJSON LineString serialization |

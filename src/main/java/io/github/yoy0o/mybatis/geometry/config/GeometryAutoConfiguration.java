@@ -1,10 +1,12 @@
 package io.github.yoy0o.mybatis.geometry.config;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.yoy0o.mybatis.geometry.handler.LineStringTypeHandler;
 import io.github.yoy0o.mybatis.geometry.handler.PointTypeHandler;
 import io.github.yoy0o.mybatis.geometry.handler.PolygonTypeHandler;
 import io.github.yoy0o.mybatis.geometry.interceptor.GeometryFieldInterceptor;
+import io.github.yoy0o.mybatis.geometry.jackson.GeometryJacksonModule;
 import io.github.yoy0o.mybatis.geometry.strategy.GeometryHandlerStrategy;
 import io.github.yoy0o.mybatis.geometry.strategy.GeometryStrategyFactory;
 import io.github.yoy0o.mybatis.geometry.util.GeometryFactoryProvider;
@@ -63,6 +65,8 @@ public class GeometryAutoConfiguration {
     /**
      * Create GeometryHandlerStrategy bean.
      * Auto-detects database type if not configured.
+     * Synchronizes the strategy to the global default so that TypeHandlers
+     * created via reflection (no-arg constructor) use the same instance.
      */
     @Bean
     @ConditionalOnMissingBean
@@ -70,13 +74,17 @@ public class GeometryAutoConfiguration {
             DataSource dataSource,
             GeometryProperties properties) {
 
+        GeometryHandlerStrategy strategy;
         if (properties.getDatabaseType() != null) {
             log.info("Using configured database type: {}", properties.getDatabaseType());
-            return GeometryStrategyFactory.getStrategy(properties.getDatabaseType());
+            strategy = GeometryStrategyFactory.getStrategy(properties.getDatabaseType());
+        } else {
+            log.info("Auto-detecting database type from DataSource");
+            strategy = GeometryStrategyFactory.detectStrategy(dataSource);
         }
-
-        log.info("Auto-detecting database type from DataSource");
-        return GeometryStrategyFactory.detectStrategy(dataSource);
+        // Sync to global default strategy
+        GeometryStrategyFactory.setDefaultStrategy(strategy);
+        return strategy;
     }
 
     /**
@@ -94,6 +102,21 @@ public class GeometryAutoConfiguration {
     public GeometryFieldInterceptor geometryFieldInterceptor(GeometryHandlerStrategy strategy) {
         log.info("Registering GeometryFieldInterceptor for SELECT queries");
         return new GeometryFieldInterceptor(strategy);
+    }
+
+    /**
+     * Create GeometryJacksonModule bean for automatic GeoJSON serialization support.
+     * Only created when Jackson ObjectMapper is on the classpath.
+     * Coordinate validation is automatically enabled when default SRID is 4326 (WGS84).
+     */
+    @Bean
+    @ConditionalOnClass(ObjectMapper.class)
+    @ConditionalOnMissingBean(name = "geometryJacksonModule")
+    public GeometryJacksonModule geometryJacksonModule(GeometryProperties properties) {
+        boolean validate = properties.isCoordinateValidationEnabled();
+        log.info("Registering GeometryJacksonModule (SRID={}, coordinateValidation={})",
+            properties.getDefaultSrid(), validate);
+        return new GeometryJacksonModule(validate);
     }
 
     /**
